@@ -1,0 +1,19 @@
+name: dash-template
+
+channels:
+  - conda-forge
+  - defaults
+
+dependencies:
+  - python=3.11
+  - pandas
+  - pytest
+  - dash==2.13.0
+  - dash-core-components
+  - dash-html-components
+  - ydata_profiling
+  - pip
+  - pip:
+    - dash-daq
+    - dash-auth
+    - dash-bootstrap-components
