@@ -11,7 +11,7 @@ dependencies:
   - dash==2.13.0
   - dash-core-components
   - dash-html-components
-  - ydata_profiling
+  - ydata-profiling
   - pip
   - pip:
     - dash-daq
