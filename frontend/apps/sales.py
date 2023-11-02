@@ -83,7 +83,7 @@ def lookup_data(since, until, segments):
         since = until = dt.date(1900,1,1)
         segment_list = ''
 
-    conn = sqlite3.connect('../data/sales.db')
+    conn = sqlite3.connect('./data/sales.db')
 
     query = f"""
     SELECT
