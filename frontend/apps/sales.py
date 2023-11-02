@@ -26,6 +26,7 @@ DEFAULTS = {
 # Plots
 graph01 = dcc.Graph(id='venda-plot')
 graph02 = dcc.Graph(id='venda-pie')
+graph03 = dcc.Graph(id='venda-globe')
 table01 = html.Div(id='venda-ng-table')
 download_button = dbc.Button(
     id='btn',
@@ -50,6 +51,13 @@ def layout(pathname, auth_data):
             [
                 dbc.Col(graph01, width={'size':8, 'offset':0}),
                 dbc.Col(graph02),
+            ]
+        ),
+
+        # Graph row
+        dbc.Row(
+            [
+                dbc.Col(graph03),
             ]
         ),
 
@@ -251,4 +259,100 @@ def update_pie(start_date, end_date, segments):
             color_discrete_sequence=px.colors.sequential.RdBu
         )
 
+@app.callback(
+    Output(component_id='venda-globe', component_property='figure'),
+    Input('date-picker', 'start_date'),
+    Input('date-picker', 'end_date'),
+    Input('segment', 'value'),
+)
+def update_globe(start_date, end_date, segments):
+
+    # Parse parameters
+    if start_date and end_date:
+        a = start_date.split('-')
+        since = int(a[0] + a[1] + a[2])
+        a = end_date.split('-')
+        until = int(a[0] + a[1] + a[2])
+        if until < since: until = since
+    else:
+        since = until = 0
+
+    try:
+        since = dt.datetime.strptime(str(since), '%Y%m%d').date()
+        until = dt.datetime.strptime(str(until), '%Y%m%d').date()
+        segment_list = ', '.join(
+            ["'" + segment + "'" for segment in segments]
+        )
+
+    except:
+        since = until = dt.date(1900,1,1)
+        segment_list = ''
+
+    # Lookup data
+    conn = sqlite3.connect('./data/sales.db')
+    query = f"""
+    SELECT
+        Country
+        ,Sales
+        ,Quantity
+        ,"Order ID"
+    FROM orders
+    WHERE "Order Date" BETWEEN '{since}' AND '{until}'
+        AND segment in ({segment_list})
+    """
+    top = pd.read_sql(query, conn)
+
+    # transform data
+    top = top.groupby('Country').agg(
+        {
+            'Quantity':'sum',
+            'Sales':'sum',
+            'Order ID':'count',
+        }
+    ).sort_values('Sales', ascending=False).reset_index()
+
+    top.rename(index=str,
+              columns={'Order ID':'Orders'},
+              inplace=True)
+
+    all = top['Sales'].sum()
+    top['dist'] = top['Sales'].apply(
+        lambda x: (x/all)
+        )
+    top['dist'] = (top['dist']*100).map('{:.2f}%'.format)
+
+    pd.options.display.float_format = '{:.2f}'.format
+    top.style.format(
+        {
+            'Sales': lambda x: locale.currency(x,grouping=True)
+        }
+    )
+
+    country = px.data.gapminder()
+    country = country[['country','continent', 'iso_alpha']].drop_duplicates().reset_index(drop=True)
+    country.rename(index=str,
+              columns={'country':'Country'},
+              inplace=True)
+
+
+    top_map = top[:-1].merge(
+        country,
+        on='Country',
+        how='left',
+    )
+    return px.scatter_geo(
+            top_map,
+            locations="iso_alpha",
+            color="continent",
+            hover_name="Country",
+            size="Sales",
+            projection="natural earth"
+    )
+
+
+
+    return px.pie(
+            df, values='sales', names='market',
+            color_discrete_sequence=px.colors.sequential.RdBu
+        )
 
